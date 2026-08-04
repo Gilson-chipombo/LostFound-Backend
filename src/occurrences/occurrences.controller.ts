@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   UploadedFiles,
 } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from "@nestjs/swagger";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { OccurrencesService } from "./occurrences.service";
 import { CreateOccurrenceDto } from "./dto/create-occurrence.dto";
@@ -23,6 +24,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { OccurrenceStatus } from "@prisma/client";
 
+@ApiTags("Ocorrências")
 @Controller("api/occurrences")
 export class OccurrencesController {
   constructor(
@@ -31,24 +33,30 @@ export class OccurrencesController {
   ) {}
 
   @Public()
+  @ApiOperation({ summary: "Listar ocorrências com filtros (tipo, categoria, município, busca)" })
   @Get()
   findAll(@Query() query: QueryOccurrenceDto) {
     return this.occurrencesService.findAll(query);
   }
 
   @Public()
+  @ApiOperation({ summary: "Obter detalhe de uma ocorrência por ID" })
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.occurrencesService.findOne(id);
   }
 
   @Public()
+  @ApiOperation({ summary: "Obter correspondências sugeridas para uma ocorrência" })
   @Get(":id/matches")
   async getMatches(@Param("id") id: string) {
     const occ = await this.occurrencesService.findOne(id);
     return occ.matches || [];
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Criar uma nova ocorrência com fotos (upload para Cloudinary)" })
+  @ApiConsumes("multipart/form-data")
   @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FilesInterceptor("files", 5))
@@ -72,6 +80,9 @@ export class OccurrencesController {
     });
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Atualizar dados de uma ocorrência" })
+  @ApiConsumes("multipart/form-data")
   @UseGuards(JwtAuthGuard)
   @Put(":id")
   @UseInterceptors(FilesInterceptor("files", 5))
@@ -97,6 +108,8 @@ export class OccurrencesController {
     });
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Atualizar o estado de uma ocorrência (ex.: ATIVO, EM_ANALISE, RESOLVIDO)" })
   @UseGuards(JwtAuthGuard)
   @Patch(":id/status")
   updateStatus(
@@ -109,6 +122,8 @@ export class OccurrencesController {
     return this.occurrencesService.updateStatus(id, userId, role, statusUpper);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Eliminar uma ocorrência" })
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
   remove(
