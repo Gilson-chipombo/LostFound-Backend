@@ -1,0 +1,149 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  UTILIZADOR
+  ADMIN
+}
+
+enum OccurrenceType {
+  PERDIDO
+  ENCONTRADO
+  AVISO
+}
+
+enum OccurrenceStatus {
+  ATIVO
+  EM_ANALISE
+  RESOLVIDO
+  ARQUIVADO
+}
+
+enum ReportStatus {
+  PENDENTE
+  RESOLVIDO
+  REJEITADO
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(UTILIZADOR)
+  avatar       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  occurrences                 Occurrence[]
+  notifications               Notification[]
+  reports                     Report[]       @relation("Reporter")
+  messages                    Message[]
+  conversationsAsParticipantA Conversation[] @relation("ParticipantA")
+  conversationsAsParticipantB Conversation[] @relation("ParticipantB")
+}
+
+model Occurrence {
+  id              String           @id @default(uuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            OccurrenceType
+  title           String
+  description     String           @db.Text
+  category        String
+  brand           String?
+  model           String?
+  color           String?
+  features        String[]         @default([])
+  municipality    String
+  neighborhood    String
+  location        String
+  date            DateTime
+  status          OccurrenceStatus @default(ATIVO)
+  images          String[]         @default([])
+
+  contactPhone    String?
+  contactWhatsapp String?
+  contactEmail    String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  reports         Report[]
+  conversations   Conversation[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  icon      String?
+  createdAt DateTime @default(now())
+}
+
+model Municipality {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  neighborhoods String[]
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id             String   @id @default(uuid())
+  participantAId String
+  participantBId String
+  occurrenceId   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  participantA User        @relation("ParticipantA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB User        @relation("ParticipantB", fields: [participantBId], references: [id], onDelete: Cascade)
+  occurrence   Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+  messages     Message[]
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  text           String
+  sentAt         DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id                 String       @id @default(uuid())
+  reporterId         String
+  targetOccurrenceId String
+  reason             String
+  status             ReportStatus @default(PENDENTE)
+  createdAt          DateTime     @default(now())
+
+  reporter         User       @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetOccurrence Occurrence @relation(fields: [targetOccurrenceId], references: [id], onDelete: Cascade)
+}
+
+model SystemSettings {
+  id                String   @id @default("default")
+  requireModeration Boolean  @default(false)
+  minMatchPercent   Int      @default(60)
+  searchRadiusKm    Int      @default(15)
+  updatedAt         DateTime @updatedAt
+}
