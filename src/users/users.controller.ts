@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -55,6 +56,12 @@ export class UsersController {
       name,
       avatar: avatarUrl,
     });
+  }
+
+  @ApiOperation({ summary: "Pesquisar utilizadores para iniciar conversa no chat" })
+  @Get("users/search")
+  searchUsers(@CurrentUser("id") userId: string, @Query("q") q?: string) {
+    return this.usersService.searchUsers(q || "", userId);
   }
 
   // Admin Routes
