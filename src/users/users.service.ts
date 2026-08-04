@@ -56,29 +56,44 @@ export class UsersService {
   }
 
   async searchUsers(query: string, currentUserId: string) {
+    const cleanQuery = (query || "").trim();
+
+    const whereCondition: any = {
+      id: { not: currentUserId },
+    };
+
+    if (cleanQuery) {
+      whereCondition.OR = [
+        { name: { contains: cleanQuery, mode: "insensitive" } },
+        { email: { contains: cleanQuery, mode: "insensitive" } },
+      ];
+    }
+
     const users = await this.prisma.user.findMany({
-      where: {
-        id: { not: currentUserId },
-        ...(query
-          ? {
-              OR: [
-                { name: { contains: query, mode: "insensitive" } },
-                { email: { contains: query, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
+      where: whereCondition,
       select: {
         id: true,
         name: true,
         email: true,
         avatar: true,
+        role: true,
+        _count: {
+          select: { occurrences: true },
+        },
       },
-      take: 15,
-      orderBy: { name: "asc" },
+      take: 20,
+      orderBy: cleanQuery ? { name: "asc" } : { createdAt: "desc" },
     });
 
-    return users;
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      avatar: u.avatar,
+      role: u.role.toLowerCase(),
+      occurrencesCount: u._count.occurrences,
+      isSuggested: !cleanQuery,
+    }));
   }
 
   async findAllAdmin() {
