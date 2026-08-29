@@ -100,6 +100,17 @@ export class ConversationsService {
     const sender = conv.participantAId === senderId ? conv.participantA : conv.participantB;
     const recipient = conv.participantAId === senderId ? conv.participantB : conv.participantA;
 
+    // Criar notificação interna no sistema para o destinatário
+    if (recipient?.id) {
+      await this.prisma.notification.create({
+        data: {
+          userId: recipient.id,
+          title: `Nova mensagem de ${sender.name}`,
+          description: text.length > 80 ? text.substring(0, 80) + "..." : text,
+        },
+      }).catch(() => {});
+    }
+
     if (recipient?.email) {
       this.mailService.sendChatMessageNotification(
         recipient.email,

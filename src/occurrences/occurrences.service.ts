@@ -222,12 +222,12 @@ export class OccurrencesService {
       this.prisma.user.count(),
     ]);
 
-    const successRate = totalOccurrences > 0 ? Math.round((resolvedOccurrences / totalOccurrences) * 100) : 68;
+    const successRate = totalOccurrences > 0 ? Math.round((resolvedOccurrences / totalOccurrences) * 100) : 0;
 
     return {
-      totalOccurrences: totalOccurrences > 0 ? totalOccurrences : 1284,
-      resolvedOccurrences: resolvedOccurrences > 0 ? resolvedOccurrences : 412,
-      totalUsers: totalUsers > 0 ? totalUsers : 3560,
+      totalOccurrences,
+      resolvedOccurrences,
+      totalUsers,
       successRate: `${successRate}%`,
     };
   }
@@ -273,15 +273,16 @@ export class OccurrencesService {
       const matches = await this.findMatches(occurrence);
       if (matches.length > 0) {
         const topMatch = matches[0];
+
+        // 1. Notificar o autor da nova ocorrência publicada (Pessoa A)
         await this.prisma.notification.create({
           data: {
             userId: occurrence.userId,
             title: "Nova correspondência encontrada!",
             description: `Encontramos uma correspondência de ${topMatch.matchPercent}% para "${occurrence.title}".`,
           },
-        });
+        }).catch(() => {});
 
-        // Enviar e-mail de correspondência
         if (occurrence.user?.email) {
           this.mailService.sendMatchNotification(
             occurrence.user.email,
@@ -291,8 +292,32 @@ export class OccurrencesService {
             topMatch.title,
           ).catch(() => {});
         }
+
+        // 2. Notificar o autor da correspondência existente (Pessoa B)
+        if (topMatch.userId && topMatch.userId !== occurrence.userId) {
+          await this.prisma.notification.create({
+            data: {
+              userId: topMatch.userId,
+              title: "Nova correspondência encontrada!",
+              description: `A sua publicação "${topMatch.title}" tem uma correspondência de ${topMatch.matchPercent}% com uma nova publicação.`,
+            },
+          }).catch(() => {});
+
+          const topMatchUser = await this.prisma.user.findUnique({ where: { id: topMatch.userId } });
+          if (topMatchUser?.email) {
+            this.mailService.sendMatchNotification(
+              topMatchUser.email,
+              topMatchUser.name,
+              topMatch.title,
+              topMatch.matchPercent,
+              occurrence.title,
+            ).catch(() => {});
+          }
+        }
       }
-    } catch {}
+    } catch (err: any) {
+      console.error("Erro ao processar notificações de correspondência:", err);
+    }
   }
 
   private formatOccurrence(occ: any) {
