@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { MailService } from "../mail/mail.service";
 
 @Injectable()
 export class ConversationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   async getUserConversations(userId: string) {
     const conversations = await this.prisma.conversation.findMany({
@@ -69,6 +73,10 @@ export class ConversationsService {
   async sendMessage(conversationId: string, senderId: string, text: string) {
     const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
+      include: {
+        participantA: true,
+        participantB: true,
+      },
     });
 
     if (!conv) throw new NotFoundException("Conversa não encontrada.");
@@ -88,6 +96,18 @@ export class ConversationsService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
+    const sender = conv.participantAId === senderId ? conv.participantA : conv.participantB;
+    const recipient = conv.participantAId === senderId ? conv.participantB : conv.participantA;
+
+    if (recipient?.email) {
+      this.mailService.sendChatMessageNotification(
+        recipient.email,
+        recipient.name,
+        sender.name,
+        text.length > 100 ? text.substring(0, 100) + "..." : text,
+      ).catch(() => {});
+    }
 
     return {
       id: message.id,

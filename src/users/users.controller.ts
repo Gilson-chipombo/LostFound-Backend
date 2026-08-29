@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
   Patch,
   Delete,
@@ -62,6 +63,31 @@ export class UsersController {
   @Get("users/search")
   searchUsers(@CurrentUser("id") userId: string, @Query("q") q?: string) {
     return this.usersService.searchUsers(q || "", userId);
+  }
+
+  // Favoritos
+  @ApiOperation({ summary: "Obter ocorrências favoritas do utilizador autenticado" })
+  @Get("user/favorites")
+  getUserFavorites(@CurrentUser("id") userId: string) {
+    return this.usersService.getUserFavorites(userId);
+  }
+
+  @ApiOperation({ summary: "Obter IDs de ocorrências favoritas do utilizador autenticado" })
+  @Get("user/favorites/ids")
+  getUserFavoriteIds(@CurrentUser("id") userId: string) {
+    return this.usersService.getUserFavoriteIds(userId);
+  }
+
+  @ApiOperation({ summary: "Adicionar ocorrência aos favoritos" })
+  @Post("user/favorites/:occurrenceId")
+  addFavorite(@CurrentUser("id") userId: string, @Param("occurrenceId") occurrenceId: string) {
+    return this.usersService.addFavorite(userId, occurrenceId);
+  }
+
+  @ApiOperation({ summary: "Remover ocorrência dos favoritos" })
+  @Delete("user/favorites/:occurrenceId")
+  removeFavorite(@CurrentUser("id") userId: string, @Param("occurrenceId") occurrenceId: string) {
+    return this.usersService.removeFavorite(userId, occurrenceId);
   }
 
   // Admin Routes

@@ -12,11 +12,14 @@ import { ConversationsModule } from "./conversations/conversations.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AdminModule } from "./admin/admin.module";
 
+import { MailModule } from "./mail/mail.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     CloudinaryModule,
+    MailModule,
     AuthModule,
     OccurrencesModule,
     CategoriesModule,

@@ -133,4 +133,78 @@ export class UsersService {
     await this.prisma.user.delete({ where: { id } });
     return { success: true };
   }
+
+  // Favoritos
+  async addFavorite(userId: string, occurrenceId: string) {
+    const occurrence = await this.prisma.occurrence.findUnique({ where: { id: occurrenceId } });
+    if (!occurrence) throw new NotFoundException("Ocorrência não encontrada.");
+
+    const favorite = await this.prisma.favorite.upsert({
+      where: { userId_occurrenceId: { userId, occurrenceId } },
+      create: { userId, occurrenceId },
+      update: {},
+    });
+
+    return { success: true, favoriteId: favorite.id };
+  }
+
+  async removeFavorite(userId: string, occurrenceId: string) {
+    try {
+      await this.prisma.favorite.delete({
+        where: { userId_occurrenceId: { userId, occurrenceId } },
+      });
+    } catch {}
+    return { success: true };
+  }
+
+  async getUserFavorites(userId: string) {
+    const favorites = await this.prisma.favorite.findMany({
+      where: { userId },
+      include: {
+        occurrence: {
+          include: { user: { select: { id: true, name: true, email: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return favorites
+      .filter((f) => f.occurrence !== null)
+      .map((f) => {
+        const occ = f.occurrence;
+        return {
+          id: occ.id,
+          type: occ.type.toLowerCase(),
+          title: occ.title,
+          description: occ.description,
+          category: occ.category,
+          brand: occ.brand || undefined,
+          model: occ.model || undefined,
+          color: occ.color || undefined,
+          features: occ.features || [],
+          municipality: occ.municipality,
+          neighborhood: occ.neighborhood,
+          location: occ.location,
+          date: occ.date ? new Date(occ.date).toISOString().split("T")[0] : "",
+          status: occ.status.toLowerCase(),
+          images: occ.images || [],
+          contact: {
+            phone: occ.contactPhone || undefined,
+            whatsapp: occ.contactWhatsapp || undefined,
+            email: occ.contactEmail || undefined,
+          },
+          author: occ.user?.name || "Anónimo",
+          userId: occ.userId,
+          createdAt: occ.createdAt,
+        };
+      });
+  }
+
+  async getUserFavoriteIds(userId: string) {
+    const favorites = await this.prisma.favorite.findMany({
+      where: { userId },
+      select: { occurrenceId: true },
+    });
+    return favorites.map((f) => f.occurrenceId);
+  }
 }

@@ -47,6 +47,7 @@ model User {
   messages                    Message[]
   conversationsAsParticipantA Conversation[] @relation("ParticipantA")
   conversationsAsParticipantB Conversation[] @relation("ParticipantB")
+  favorites                   Favorite[]
 }
 
 model Occurrence {
@@ -77,6 +78,7 @@ model Occurrence {
 
   reports         Report[]
   conversations   Conversation[]
+  favorites       Favorite[]
 }
 
 model Category {
@@ -146,4 +148,16 @@ model SystemSettings {
   minMatchPercent   Int      @default(60)
   searchRadiusKm    Int      @default(15)
   updatedAt         DateTime @updatedAt
+}
+
+model Favorite {
+  id           String     @id @default(uuid())
+  userId       String
+  occurrenceId String
+  createdAt    DateTime   @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, occurrenceId])
 }

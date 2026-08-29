@@ -33,6 +33,13 @@ export class OccurrencesController {
   ) {}
 
   @Public()
+  @ApiOperation({ summary: "Obter estatísticas públicas globais para a Homepage" })
+  @Get("stats/public")
+  getPublicStats() {
+    return this.occurrencesService.getPublicStats();
+  }
+
+  @Public()
   @ApiOperation({ summary: "Listar ocorrências com filtros (tipo, categoria, município, busca)" })
   @Get()
   findAll(@Query() query: QueryOccurrenceDto) {
